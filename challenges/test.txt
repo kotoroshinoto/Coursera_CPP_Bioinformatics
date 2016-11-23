@@ -1,0 +1,5 @@
+        leading_spaces
+trailing_spaces       
+					leading_tabs
+trailing_tabs
+trailing_newline
