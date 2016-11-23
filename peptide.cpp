@@ -181,10 +181,12 @@ public:
 	static PeptideCode symbol_to_peptide(char symb);
 	static std::string revcomp(std::string& dna, bool rna_mode=false);
 	static char complement(char nuc, bool rna_mode=false);
+	static std::size_t getMassFor(PeptideCode aa);
 	Peptide(std::string aastr);
 	Peptide();
 	Peptide(PeptideCode& aa);
 	Peptide(std::vector<PeptideCode>& aa);
+//	Peptide(Peptide& other);
 	void addAminoAcid(PeptideCode aa);
 	std::string to_string(bool include_stops=false);
 	std::string to_abbrev_string(bool include_stops=false);
@@ -196,25 +198,49 @@ public:
 	bool operator ==(const Peptide &prot2);
 	bool isSameAs(const Peptide &prot2, bool include_stops=false);
 	Peptide subseq(std::size_t i, std::size_t len);
+	std::vector< std::size_t > linear_spectrum();
+	std::vector< std::size_t > cyclic_spectrum();
+	std::size_t get_mass();
+	Peptide prefix(std::size_t len);
 //	Peptide addAminoAcid_new(PeptideCode aa);
 //	std::vector<Peptide> branch();
 //	bool bind();
 private:
-//	int totalmass;
-//	std::vector<int> masses;
+	std::size_t totalmass;
 	std::vector<PeptideCode> sequence;
 };
 
-Peptide::Peptide():sequence(){}
+std::size_t Peptide::get_mass(){
+	return this->totalmass;
+}
 
-Peptide::Peptide(PeptideCode& aa):sequence(){
+void Peptide::addAminoAcid(PeptideCode aa){
+	this->sequence.push_back(aa);
+	this->totalmass += Peptide::getMassFor(aa);
+}
+
+//Peptide::Peptide(Peptide& other):totalmass(other.totalmass), sequence(other.sequence){}
+
+Peptide::Peptide():totalmass(0), sequence(){}
+
+Peptide::Peptide(PeptideCode& aa):totalmass(0), sequence(){
 	this->addAminoAcid(aa);
 }
 
-Peptide::Peptide(std::vector<PeptideCode>& aaseq):sequence(){
+Peptide::Peptide(std::vector<PeptideCode>& aaseq):totalmass(0), sequence(){
 	std::for_each(aaseq.begin(), aaseq.end(),std::bind1st(std::mem_fun(&Peptide::addAminoAcid), this));
 }
 
+Peptide::Peptide(std::string aastr):totalmass(0), sequence(){
+	for(std::size_t i =0;i < aastr.size();i++){
+		this->addAminoAcid(Peptide::symbol_to_peptide(aastr[i]));
+	}
+//	std::cout<<"number of peptide entries: "<<this->sequence.size()<<std::endl<<std::flush;
+}
+
+Peptide Peptide::prefix(std::size_t len){
+	return this->subseq(0,len);
+}
 
 std::string Peptide::to_string(bool include_stops){
 	std::vector<char> aastr;
@@ -252,13 +278,6 @@ std::string Peptide::to_fullword_string(bool include_stops){
 	return join(words, "");
 }
 
-Peptide::Peptide(std::string aastr):sequence(){
-	for(std::size_t i =0;i < aastr.size();i++){
-		this->addAminoAcid(Peptide::symbol_to_peptide(aastr[i]));
-	}
-//	std::cout<<"number of peptide entries: "<<this->sequence.size()<<std::endl<<std::flush;
-}
-
 std::size_t Peptide::number_of_sequences(bool include_stops){
 	std::size_t total = 1;
 	int num_codons;
@@ -272,10 +291,6 @@ std::size_t Peptide::number_of_sequences(bool include_stops){
 		total *= num_codons;
 	}
 	return total;
-}
-
-void Peptide::addAminoAcid(PeptideCode aa){
-	this->sequence.push_back(aa);
 }
 
 
@@ -707,6 +722,52 @@ char Peptide::PeptideCode_to_symbol(PeptideCode aa){
 			return 'M';
 	}
 }
+std::size_t Peptide::getMassFor(PeptideCode aa){
+	switch (aa){
+		case STOP:
+			return 0;
+		case HISTIDINE:
+			return 137;
+		case GLUTAMINE:
+			return 128;
+		case PROLINE:
+			return 97;
+		case ARGININE:
+			return 156;
+		case LEUCINE:
+			return 113;
+		case ASPARTIC_ACID:
+			return 115;
+		case GLUTAMIC_ACID:
+			return 129;
+		case ALANINE:
+			return 71;
+		case GLYCINE:
+			return 57;
+		case VALINE:
+			return 99;
+		case TYROSINE:
+			return 163;
+		case SERINE:
+			return 87;
+		case CYSTEINE:
+			return 103;
+		case TRYPTOPHAN:
+			return 186;
+		case PHENYLALANINE:
+			return 147;
+		case ASPARAGINE:
+			return 114;
+		case LYSINE:
+			return 128;
+		case THREONINE:
+			return 101;
+		case ISOLEUCINE:
+			return 113;
+		case METHIONINE:
+			return 131;
+	}
+}
 
 Peptide::PeptideCode Peptide::codon_to_peptide(char cod1, char cod2, char cod3) {
 	char N1 = (char) std::toupper(cod1);
@@ -845,6 +906,61 @@ Peptide::PeptideCode Peptide::codon_to_peptide(char cod1, char cod2, char cod3) 
 	throw std::runtime_error("codon_to_peptide: INVALID RNA CHARACTER");
 }
 
+std::vector< std::size_t > Peptide::linear_spectrum(){
+//	std::cout<<"[Peptide::linear_spectrum] start"<<std::endl<<std::flush;
+	std::vector< Peptide > prefixes;
+	std::vector<std::string> strs;
+//	strs.push_back("");
+	prefixes.push_back(Peptide());
+//	std::cout<<"[Peptide::linear_spectrum] size"<<this->size(true)<<std::endl<<std::flush;
+	for(std::size_t i=0;i < this->size(true);i++){
+		Peptide previous = prefixes[i];
+		previous.addAminoAcid(this->sequence[i]);
+		prefixes.push_back(previous);
+//		strs.push_back(previous.to_string());
+	}
+//	std::cout<<join(strs,";") <<std::endl<<std::flush;
+	std::vector< std::size_t > linspec;
+	linspec.push_back(0);
+	for(std::size_t i = 0; i <prefixes.size() - 1;i++){
+		for(std::size_t j = i + 1; j < prefixes.size();j++){
+//			std::cout<<"[Peptide::linear_spectrum] prefix["<<i<<"]:"<<prefixes[i].to_string()<<std::endl<<std::flush;
+//			std::cout<<"[Peptide::linear_spectrum] prefix["<<j<<"]:"<<prefixes[j].to_string()<<std::endl<<std::flush;
+			linspec.push_back(prefixes[j].get_mass()-prefixes[i].get_mass());
+		}
+	}
+	std::sort(linspec.begin(),linspec.end());
+//	std::cout<<"[Peptide::linear_spectrum] end"<<std::endl<<std::flush;
+	return linspec;
+}
+
+std::vector< std::size_t > Peptide::cyclic_spectrum(){
+	std::vector< Peptide > prefixes;
+	std::vector<std::string> strs;
+
+	prefixes.push_back(Peptide());
+
+	for(std::size_t i=0;i < this->size(true);i++){
+		Peptide previous = prefixes[i];
+		previous.addAminoAcid(this->sequence[i]);
+		prefixes.push_back(previous);
+
+	}
+	std::size_t peptidemass = this->get_mass();
+	std::vector< std::size_t > cycspec;
+	cycspec.push_back(0);
+	for(std::size_t i = 0; i <prefixes.size() - 1;i++){
+		for(std::size_t j = i + 1; j < prefixes.size();j++){
+			cycspec.push_back(prefixes[j].get_mass()-prefixes[i].get_mass());
+			if(i > 0 && j < prefixes.size() - 1){
+//				std::cout<<"i: "<<i<<" j:"<<j<<std::endl;
+				cycspec.push_back(peptidemass - (prefixes[j].get_mass() - prefixes[i].get_mass()));
+			}
+		}
+	}
+	std::sort(cycspec.begin(),cycspec.end());
+	return cycspec;
+}
 
 //implement static functions
 
