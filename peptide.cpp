@@ -9,15 +9,17 @@
 #include <iterator>
 #include <type_traits>
 #include <cctype>
+#include <map>
 
 // define static functions
 std::size_t compute_original_index(std::size_t aa_pos, std::size_t orig_len, std::size_t offset, std::size_t search_aa_len, bool is_reverse);
 
 // define Objects
+template<typename int_type>
 class intVectorFiller {
-    std::vector<int>& v;
+    std::vector<int_type>& v;
 public:
-    intVectorFiller(std::vector<int>& v);
+    intVectorFiller(std::vector<int_type>& v);
     void operator()(std::string& item);
 };
 
@@ -32,9 +34,11 @@ private:
 public:
     InputData();
     int next_as_int();
+	void next_into_size_t_vector(std::vector<std::size_t> &stv, std::string &separator);
+	void rest_into_size_t_vector(std::vector<std::size_t> &stv);
     void next_into_int_vector(std::vector<int> &intv, std::string &separator);
     void next_into_str_vector(std::vector<std::string> &strv, std::string &separator);
-    void rest_into_int_vector(std::vector<int> &intv);
+	void rest_into_int_vector(std::vector<int> &intv);
     void rest_into_str_vector(std::vector<std::string> &strv);
     std::string next();
     std::size_t size();
@@ -52,20 +56,22 @@ std::regex InputData::whitespace_re("\\s+");
 
 //implement object functions
 
-intVectorFiller::intVectorFiller(std::vector<int>& v): v(v){}
+template<typename int_type>
+intVectorFiller<int_type>::intVectorFiller(std::vector<int_type>& v): v(v){}
 
-void intVectorFiller::operator()(std::string& item) {
+template<typename int_type>
+void intVectorFiller<int_type>::operator()(std::string& item) {
 	v.push_back(InputData::stoi(item));
 }
 
 int InputData::stoi(std::string &text){
 	if(text.find(',') >= 0) {
 		std::string t(text);
-		std::cout << "text: " << t <<  std::flush;
+//		std::cout << "text: " << t <<  std::flush;
 		t.erase(std::remove(t.begin(), t.end(), ','), t.end());
-		std::cout << "\tt: " << t << std::flush;
+//		std::cout << "\tt: " << t << std::flush;
 		int i = std::stoi(t);
-		std::cout << "\tint: " << i << std::endl << std::flush;
+//		std::cout << "\tint: " << i << std::endl << std::flush;
 		return i;
 	} else {
 		return std::stoi(text);
@@ -96,10 +102,22 @@ std::size_t InputData::size(){
     return this->data.size();
 }
 
+void InputData::next_into_size_t_vector(std::vector<std::size_t> &stv, std::string &separator){
+	std::vector<std::string> str_form;
+	this->next_into_str_vector(str_form, separator);
+	std::for_each(str_form.begin(),str_form.end(),intVectorFiller<std::size_t>(stv));
+}
+
+void InputData::rest_into_size_t_vector(std::vector<std::size_t> &stv){
+	std::vector<std::string> str_form;
+	this->rest_into_str_vector(str_form);
+	std::for_each(str_form.begin(),str_form.end(),intVectorFiller<std::size_t>(stv));
+}
+
 void InputData::next_into_int_vector(std::vector<int> &intv, std::string &separator) {
     std::vector<std::string> str_form;
     this->next_into_str_vector(str_form, separator);
-    std::for_each(str_form.begin(),str_form.end(),intVectorFiller(intv));
+    std::for_each(str_form.begin(),str_form.end(),intVectorFiller<int>(intv));
 }
 
 void InputData::next_into_str_vector(std::vector<std::string> &strv, std::string &separator) {
@@ -113,7 +131,7 @@ void InputData::next_into_str_vector(std::vector<std::string> &strv, std::string
 void InputData::rest_into_int_vector(std::vector<int> &intv) {
     std::vector<std::string> str_form;
     this->rest_into_str_vector(str_form);
-    std::for_each(str_form.begin(),str_form.end(),intVectorFiller(intv));
+    std::for_each(str_form.begin(),str_form.end(),intVectorFiller<int>(intv));
 }
 
 void InputData::rest_into_str_vector(std::vector<std::string> &strv) {
@@ -182,12 +200,15 @@ public:
 	static std::string revcomp(std::string& dna, bool rna_mode=false);
 	static char complement(char nuc, bool rna_mode=false);
 	static std::size_t getMassFor(PeptideCode aa);
+	static std::vector<Peptide> cyclopeptide_sequencing(std::vector<std::size_t>& spectrum);
+	bool is_consistent_with_spectrum(std::vector<std::size_t>& spectrum);
 	Peptide(std::string aastr);
 	Peptide();
 	Peptide(PeptideCode& aa);
 	Peptide(std::vector<PeptideCode>& aa);
 //	Peptide(Peptide& other);
 	void addAminoAcid(PeptideCode aa);
+	std::string to_mass_string(bool include_stops=false);
 	std::string to_string(bool include_stops=false);
 	std::string to_abbrev_string(bool include_stops=false);
 	std::string to_fullword_string(bool include_stops=false);
@@ -202,13 +223,25 @@ public:
 	std::vector< std::size_t > cyclic_spectrum();
 	std::size_t get_mass();
 	Peptide prefix(std::size_t len);
-//	Peptide addAminoAcid_new(PeptideCode aa);
-//	std::vector<Peptide> branch();
+	std::vector<Peptide> expand();
+	bool has_spectrum(std::vector<std::size_t>& spectrum, bool cyclic=false);
+	PeptideCode aa_at(std::size_t index);
+	std::size_t aa_mass_at(std::size_t index);
+
 //	bool bind();
 private:
 	std::size_t totalmass;
 	std::vector<PeptideCode> sequence;
+	static std::vector<PeptideCode> aa_list;
+	static std::vector<std::size_t> aa_mass_list;
+
 };
+Peptide::PeptideCode Peptide::aa_at(std::size_t index){
+	return this->sequence[index];
+}
+std::size_t Peptide::aa_mass_at(std::size_t index){
+	return Peptide::getMassFor(this->sequence[index]);
+}
 
 std::size_t Peptide::get_mass(){
 	return this->totalmass;
@@ -240,6 +273,18 @@ Peptide::Peptide(std::string aastr):totalmass(0), sequence(){
 
 Peptide Peptide::prefix(std::size_t len){
 	return this->subseq(0,len);
+}
+
+std::string Peptide::to_mass_string(bool include_stops){
+	std::vector<std::size_t> sizes;
+	for(std::size_t i = 0; i < this->sequence.size();i++){
+		Peptide::PeptideCode current = this->sequence[i];
+		if((! include_stops) && current == Peptide::PeptideCode::STOP){
+			break;
+		}
+		sizes.push_back(Peptide::getMassFor(current));
+	}
+	return join(sizes, "-");
 }
 
 std::string Peptide::to_string(bool include_stops){
@@ -730,11 +775,15 @@ std::size_t Peptide::getMassFor(PeptideCode aa){
 			return 137;
 		case GLUTAMINE:
 			return 128;
+		case LYSINE:
+			return 128;
 		case PROLINE:
 			return 97;
 		case ARGININE:
 			return 156;
 		case LEUCINE:
+			return 113;
+		case ISOLEUCINE:
 			return 113;
 		case ASPARTIC_ACID:
 			return 115;
@@ -758,12 +807,8 @@ std::size_t Peptide::getMassFor(PeptideCode aa){
 			return 147;
 		case ASPARAGINE:
 			return 114;
-		case LYSINE:
-			return 128;
 		case THREONINE:
 			return 101;
-		case ISOLEUCINE:
-			return 113;
 		case METHIONINE:
 			return 131;
 	}
@@ -960,6 +1005,110 @@ std::vector< std::size_t > Peptide::cyclic_spectrum(){
 	}
 	std::sort(cycspec.begin(),cycspec.end());
 	return cycspec;
+}
+
+std::vector<std::size_t> Peptide::aa_mass_list= {57, 71, 87, 97, 99, 101, 103, 113, 114, 115, 128, 129, 131, 137, 147, 156, 163, 186};
+
+std::vector<Peptide::PeptideCode> Peptide::aa_list={
+		Peptide::PeptideCode::GLYCINE,  //G
+		Peptide::PeptideCode::ALANINE,  //A
+		Peptide::PeptideCode::SERINE,  //S
+		Peptide::PeptideCode::PROLINE,  //P
+		Peptide::PeptideCode::VALINE,  //V
+		Peptide::PeptideCode::THREONINE,  //T
+		Peptide::PeptideCode::CYSTEINE,  //C
+		Peptide::PeptideCode::ISOLEUCINE,  //I
+//		Peptide::PeptideCode::LEUCINE,  //L mass is redundant
+		Peptide::PeptideCode::ASPARAGINE,  //N
+		Peptide::PeptideCode::ASPARTIC_ACID,  //D
+		Peptide::PeptideCode::LYSINE,  //K
+//		Peptide::PeptideCode::GLUTAMINE,  //Q mass is redundant
+		Peptide::PeptideCode::GLUTAMIC_ACID,  //E
+		Peptide::PeptideCode::METHIONINE,  //M
+		Peptide::PeptideCode::HISTIDINE,  //H
+		Peptide::PeptideCode::PHENYLALANINE,  //F
+		Peptide::PeptideCode::ARGININE,  //R
+		Peptide::PeptideCode::TYROSINE,  //Y
+		Peptide::PeptideCode::TRYPTOPHAN,  //W
+};
+
+std::vector<Peptide> Peptide::expand(){
+	std::vector<Peptide> new_peps;
+	for(std::size_t i =0;i<Peptide::aa_list.size();i++){
+		Peptide newpep = (*this);
+		newpep.addAminoAcid(Peptide::aa_list[i]);
+		new_peps.push_back(newpep);
+	}
+	return new_peps;
+}
+
+bool Peptide::has_spectrum(std::vector<std::size_t>& spectrum, bool cyclic){
+	if(cyclic) {
+		std::vector<std::size_t> myspectrum = this->cyclic_spectrum();
+		return myspectrum == spectrum;
+	} else {
+		std::vector<std::size_t> myspectrum = this->linear_spectrum();
+		return myspectrum == spectrum;
+	}
+}
+
+bool Peptide::is_consistent_with_spectrum(std::vector<std::size_t>& spectrum){
+	//spectrum is allowed to have values that we don't.
+	//we are not allowed to have values that are not in spectrum;
+	//we cannot have more counted values for any given mass than spectrum
+	std::vector<std::size_t> myspectrum = this->linear_spectrum();
+	std::map<std::size_t, std::size_t> counts;
+	std::vector<std::size_t> keys;
+	for(std::size_t i =0;i< myspectrum.size(); i++ ){
+		std::size_t val = myspectrum[i];
+		if(!counts.count(val)){
+			keys.push_back(val);
+			counts[val] = std::count(myspectrum.begin(),myspectrum.end(), val);
+		}
+	}
+
+	for(std::size_t j =0;j< keys.size(); j++ ){ // for each unique value found in our spectrum
+		std::size_t val= keys[j];
+		//count the number of times it appears in target spectrum
+		std::size_t count = std::count(spectrum.begin(),spectrum.end(),val);
+		if(count < counts[val]){
+			//if there are more of ANY value in my spectrum, I am not a subspectrum and not consistent
+			return false;
+		}
+	}
+	return true;
+}
+
+std::vector<Peptide> Peptide::cyclopeptide_sequencing(std::vector<std::size_t>& spectrum){
+	std::sort(spectrum.begin(), spectrum.end());
+	std::size_t spectrum_parentmass = spectrum[spectrum.size()-1];
+	std::queue<Peptide> peps;
+	peps.push(Peptide());
+	std::vector<Peptide> output;
+	while(peps.size() > 0){
+		Peptide currpep = peps.front();
+		peps.pop();
+		if(currpep.get_mass() > spectrum_parentmass){
+			continue;
+		}
+		else if (currpep.get_mass() == spectrum_parentmass){ //if mass of peptide is consistent with given spectrum's ParentMass
+			if(currpep.has_spectrum(spectrum, true)) {//if peptide's cyclic spectrum is consistent with given spectrum
+				//output peptide
+				output.push_back(currpep);
+			}
+			//remove peptide from peptide collection i.e. do not calculate its expansion
+			//given my change to the algorithm, doing nothing accomplishes this
+		} else if(currpep.is_consistent_with_spectrum(spectrum)){
+			std::vector<Peptide> expanded = currpep.expand();
+			for(std::size_t i = 0; i < expanded.size();i++){
+				peps.push(expanded[i]);
+			}
+		}
+		//else if Peptide's spectrum is inconsistent with given spectrum
+		//remove peptide from peptide collection i.e. do not calculate its expansion
+		//^ was rephrased as if consistent DO calculate its expansion
+	}
+	return output;
 }
 
 //implement static functions
