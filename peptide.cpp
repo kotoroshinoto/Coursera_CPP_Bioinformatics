@@ -8,11 +8,13 @@
 #include <regex>
 #include <iterator>
 #include <type_traits>
-#include <cctype>
 #include <map>
 
 // define static functions
 std::size_t compute_original_index(std::size_t aa_pos, std::size_t orig_len, std::size_t offset, std::size_t search_aa_len, bool is_reverse);
+
+template<typename int_type>
+int_type str_to_int_type(std::string &text);
 
 // define Objects
 template<typename int_type>
@@ -21,6 +23,7 @@ class intVectorFiller {
 public:
     intVectorFiller(std::vector<int_type>& v);
     void operator()(std::string& item);
+
 };
 
 class InputData {
@@ -33,19 +36,19 @@ private:
     std::queue<std::string> data;
 public:
     InputData();
-    int next_as_int();
-	void next_into_size_t_vector(std::vector<std::size_t> &stv, std::string &separator);
-	void rest_into_size_t_vector(std::vector<std::size_t> &stv);
-    void next_into_int_vector(std::vector<int> &intv, std::string &separator);
+	template<typename int_type>
+	int_type next_as_int_type();
+	template<typename int_type>
+	void next_into_int_type_vector(std::vector<int_type> &intv, std::string &separator);
+	template<typename int_type>
+	void rest_into_int_type_vector(std::vector<int_type> &intv);
     void next_into_str_vector(std::vector<std::string> &strv, std::string &separator);
-	void rest_into_int_vector(std::vector<int> &intv);
     void rest_into_str_vector(std::vector<std::string> &strv);
     std::string next();
     std::size_t size();
     std::string StripWhitespace(std::string& text);
     std::string StripLeadingWhitespace(std::string& text);
     std::string StripTrailingWhitespace(std::string& text);
-	static int stoi(std::string &text);
 };
 
 //instantiate static variables
@@ -56,40 +59,53 @@ std::regex InputData::whitespace_re("\\s+");
 
 //implement object functions
 
+InputData::InputData() {
+	std::string inputline;
+	while(std::getline(std::cin, inputline)){
+		inputline = StripWhitespace(inputline);
+		this->data.push(inputline);
+	}
+}
+
+template<typename int_type>
+int_type str_to_int_type(std::string &text){
+	std::string t(text);
+	if(t.find(',') >= 0) {
+		t.erase(std::remove(t.begin(), t.end(), ','), t.end());
+	}
+	std::stringstream ss(t);
+	int_type i;
+	ss>>i;
+	return i;
+}
+
 template<typename int_type>
 intVectorFiller<int_type>::intVectorFiller(std::vector<int_type>& v): v(v){}
 
 template<typename int_type>
 void intVectorFiller<int_type>::operator()(std::string& item) {
-	v.push_back(InputData::stoi(item));
+	v.push_back(str_to_int_type<int_type>(item));
 }
 
-int InputData::stoi(std::string &text){
-	if(text.find(',') >= 0) {
-		std::string t(text);
-//		std::cout << "text: " << t <<  std::flush;
-		t.erase(std::remove(t.begin(), t.end(), ','), t.end());
-//		std::cout << "\tt: " << t << std::flush;
-		int i = std::stoi(t);
-//		std::cout << "\tint: " << i << std::endl << std::flush;
-		return i;
-	} else {
-		return std::stoi(text);
-	}
+template<typename int_type>
+int_type InputData::next_as_int_type(){
+	int_type next = str_to_int_type<int_type>(this->data.front());
+	this->data.pop();
+	return next;
 }
 
-InputData::InputData() {
-    std::string inputline;
-    while(std::getline(std::cin, inputline)){
-        inputline = StripWhitespace(inputline);
-        this->data.push(inputline);
-    }
+template<typename int_type>
+void InputData::next_into_int_type_vector(std::vector<int_type> &intv, std::string &separator){
+	std::vector<std::string> str_form;
+	this->next_into_str_vector(str_form, separator);
+	std::for_each(str_form.begin(),str_form.end(),intVectorFiller<int_type>(intv));
 }
 
-int InputData::next_as_int(){
-    int next = InputData::stoi(this->data.front());
-    this->data.pop();
-    return next;
+template<typename int_type>
+void InputData::rest_into_int_type_vector(std::vector<int_type> &intv){
+	std::vector<std::string> str_form;
+	this->rest_into_str_vector(str_form);
+	std::for_each(str_form.begin(),str_form.end(),intVectorFiller<int_type>(intv));
 }
 
 std::string InputData::next(){
@@ -102,22 +118,10 @@ std::size_t InputData::size(){
     return this->data.size();
 }
 
-void InputData::next_into_size_t_vector(std::vector<std::size_t> &stv, std::string &separator){
-	std::vector<std::string> str_form;
-	this->next_into_str_vector(str_form, separator);
-	std::for_each(str_form.begin(),str_form.end(),intVectorFiller<std::size_t>(stv));
-}
-
-void InputData::rest_into_size_t_vector(std::vector<std::size_t> &stv){
-	std::vector<std::string> str_form;
-	this->rest_into_str_vector(str_form);
-	std::for_each(str_form.begin(),str_form.end(),intVectorFiller<std::size_t>(stv));
-}
-
-void InputData::next_into_int_vector(std::vector<int> &intv, std::string &separator) {
-    std::vector<std::string> str_form;
-    this->next_into_str_vector(str_form, separator);
-    std::for_each(str_form.begin(),str_form.end(),intVectorFiller<int>(intv));
+void InputData::rest_into_str_vector(std::vector<std::string> &strv) {
+	while(this->data.size() > 0){
+		strv.push_back(this->next());
+	}
 }
 
 void InputData::next_into_str_vector(std::vector<std::string> &strv, std::string &separator) {
@@ -128,17 +132,6 @@ void InputData::next_into_str_vector(std::vector<std::string> &strv, std::string
     this->data.pop();
 }
 
-void InputData::rest_into_int_vector(std::vector<int> &intv) {
-    std::vector<std::string> str_form;
-    this->rest_into_str_vector(str_form);
-    std::for_each(str_form.begin(),str_form.end(),intVectorFiller<int>(intv));
-}
-
-void InputData::rest_into_str_vector(std::vector<std::string> &strv) {
-    while(this->data.size() > 0){
-        strv.push_back(this->next());
-    }
-}
 
 std::string InputData::StripWhitespace(std::string& text){
     return std::regex_replace(text, whitespace_trimmer_regex_lead_and_trail, "", std::regex_constants::match_any | std::regex_constants::format_sed);
@@ -202,6 +195,7 @@ public:
 	static std::size_t getMassFor(PeptideCode aa);
 	static std::vector<Peptide> cyclopeptide_sequencing(std::vector<std::size_t>& spectrum);
 	bool is_consistent_with_spectrum(std::vector<std::size_t>& spectrum);
+//	static std::size_t get_peps_with_mass(std::size_t mass);
 	Peptide(std::string aastr);
 	Peptide();
 	Peptide(PeptideCode& aa);
@@ -227,7 +221,7 @@ public:
 	bool has_spectrum(std::vector<std::size_t>& spectrum, bool cyclic=false);
 	PeptideCode aa_at(std::size_t index);
 	std::size_t aa_mass_at(std::size_t index);
-
+	static std::vector<std::size_t> get_aa_mass_list();
 //	bool bind();
 private:
 	std::size_t totalmass;
@@ -236,6 +230,10 @@ private:
 	static std::vector<std::size_t> aa_mass_list;
 
 };
+std::vector<std::size_t> Peptide::get_aa_mass_list(){
+	return Peptide::aa_mass_list;
+}
+
 Peptide::PeptideCode Peptide::aa_at(std::size_t index){
 	return this->sequence[index];
 }
@@ -1032,6 +1030,29 @@ std::vector<Peptide::PeptideCode> Peptide::aa_list={
 		Peptide::PeptideCode::TRYPTOPHAN,  //W
 };
 
+void count_spectrum(std::vector<std::size_t> &spectrum, std::map<std::size_t, std::size_t> &counts, std::vector<std::size_t> &keys);
+void print_spectrum(std::vector<std::size_t>& spectrum);
+
+void print_spectrum(std::vector<std::size_t>& spectrum){
+	std::map<std::size_t, std::size_t> counts;
+	std::vector<std::size_t> keys;
+	count_spectrum(spectrum, counts, keys);
+	for(std::size_t i=0;i<keys.size();i++){
+		std::cout<<keys[i]<<"\t"<<counts[keys[i]]<<std::endl;
+	}
+	std::cout<<std::flush;
+}
+
+void count_spectrum(std::vector<std::size_t> &spectrum, std::map<std::size_t, std::size_t> &counts, std::vector<std::size_t> &keys){
+	for(std::size_t i =0;i< spectrum.size(); i++ ){
+		std::size_t val = spectrum[i];
+		if(!counts.count(val)){
+			keys.push_back(val);
+			counts[val] = std::count(spectrum.begin(),spectrum.end(), val);
+		}
+	}
+}
+
 std::vector<Peptide> Peptide::expand(){
 	std::vector<Peptide> new_peps;
 	for(std::size_t i =0;i<Peptide::aa_list.size();i++){
@@ -1059,14 +1080,9 @@ bool Peptide::is_consistent_with_spectrum(std::vector<std::size_t>& spectrum){
 	std::vector<std::size_t> myspectrum = this->linear_spectrum();
 	std::map<std::size_t, std::size_t> counts;
 	std::vector<std::size_t> keys;
-	for(std::size_t i =0;i< myspectrum.size(); i++ ){
-		std::size_t val = myspectrum[i];
-		if(!counts.count(val)){
-			keys.push_back(val);
-			counts[val] = std::count(myspectrum.begin(),myspectrum.end(), val);
-		}
-	}
-
+	count_spectrum(myspectrum, counts, keys);
+//	std::cout<<"checking spectrum: "<<std::endl;
+//	print_spectrum(myspectrum);
 	for(std::size_t j =0;j< keys.size(); j++ ){ // for each unique value found in our spectrum
 		std::size_t val= keys[j];
 		//count the number of times it appears in target spectrum
@@ -1079,7 +1095,33 @@ bool Peptide::is_consistent_with_spectrum(std::vector<std::size_t>& spectrum){
 	return true;
 }
 
-std::vector<Peptide> Peptide::cyclopeptide_sequencing(std::vector<std::size_t>& spectrum){
+//std::size_t Peptide::get_peps_with_mass(std::size_t mass){
+//	std::queue<Peptide> peps;
+//	peps.push(Peptide());
+//	std::vector<Peptide> output;
+//	while(peps.size() > 0){
+//		Peptide currpep = peps.front();
+//		std::size_t currmass = currpep.get_mass();
+//		peps.pop();
+//		if(currmass > mass){
+//			continue;
+//		}
+//		else if (currmass == mass){
+//			output.push_back(currpep);
+//		} else { // currmass < mass
+//			std::vector<Peptide> expanded = currpep.expand();
+//			for(std::size_t i = 0; i < expanded.size();i++){
+//				peps.push(expanded[i]);
+//			}
+//		}
+//	}
+//	return output.size();
+//}
+
+std::vector<Peptide> Peptide::cyclopeptide_sequencing(std::vector<std::size_t>& _spectrum){
+//	std::cout<<"starting with spectrum: "<<std::endl;
+//	print_spectrum(_spectrum);
+	std::vector<std::size_t> spectrum(_spectrum);
 	std::sort(spectrum.begin(), spectrum.end());
 	std::size_t spectrum_parentmass = spectrum[spectrum.size()-1];
 	std::queue<Peptide> peps;
@@ -1093,6 +1135,11 @@ std::vector<Peptide> Peptide::cyclopeptide_sequencing(std::vector<std::size_t>& 
 		}
 		else if (currpep.get_mass() == spectrum_parentmass){ //if mass of peptide is consistent with given spectrum's ParentMass
 			if(currpep.has_spectrum(spectrum, true)) {//if peptide's cyclic spectrum is consistent with given spectrum
+//				std::cout<<"matched spectrum: "<<std::endl;
+//				std::vector<std::size_t> curr_cyc_spectrum = currpep.cyclic_spectrum();
+//				print_spectrum(curr_cyc_spectrum);
+//				std::cout<<currpep.to_string()<<std::endl;
+//				std::cout<<currpep.to_mass_string()<<std::endl;
 				//output peptide
 				output.push_back(currpep);
 			}

@@ -6,18 +6,15 @@ int main() {
 		std::string whitespace("\\s");
 		InputData input;
 		std::vector<std::size_t> spectrum;
-		input.next_into_size_t_vector(spectrum, whitespace);
+		input.next_into_int_type_vector<std::size_t>(spectrum, whitespace);
 		std::vector<Peptide> seqs = Peptide::cyclopeptide_sequencing(spectrum);
 		for(size_t i =0; i < seqs.size(); i++){
-			std::vector<size_t> masses;
-			for(size_t j=0; j<seqs[i].size();j++){
-				masses.push_back(seqs[i].aa_mass_at(i));
-			}
 			if(i != 0){
 				std::cout<<" ";
 			}
-			std::cout<<join(masses,"-");
+			std::cout<<seqs[i].to_mass_string();
 		}
+		std::cout<<std::endl;
 		return 0;
 	} catch(std::exception& e){
 		std::cerr << "\nException occurred: " << std::endl << std::flush;
