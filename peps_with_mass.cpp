@@ -6,7 +6,7 @@ void test_print(std::size_t n){
 	std::cout<<"test_print: "<<n<<std::endl<<std::flush;
 }
 std::size_t get_count_for_compomer(std::vector<std::size_t> &c){
-	
+
 }
 std::size_t get_peps_with_mass_recur(std::size_t i, std::size_t m, std::vector<std::size_t> &c){
 

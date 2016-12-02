@@ -5,6 +5,7 @@ int main() {
 	try {
 		InputData input;
 		std::string aa_seq = input.next();
+		std::cout <<"'"<< aa_seq <<"'" << std::endl << std::flush;
 		Peptide prot = Peptide(aa_seq);
 		std::vector<std::size_t> sizes=prot.cyclic_spectrum();
 		std::cout << join(sizes," ")<< std::endl << std::flush;
