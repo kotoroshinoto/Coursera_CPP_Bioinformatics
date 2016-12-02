@@ -258,6 +258,7 @@ public:
 	static std::vector<std::size_t> get_aa_mass_list();
 	static std::vector<std::size_t> get_aa_mass_list_extended();
 //	bool bind();
+    static void set_extended(Spectrum s,std::size_t M);
 private:
 	std::size_t totalmass;
 	std::vector<PeptideCode> sequence;
@@ -1390,7 +1391,38 @@ std::vector<std::size_t> extended_list_initializer(){
 	return aa_masses;
 }
 std::vector<std::size_t> Peptide::aa_mass_list_extended(extended_list_initializer());
-
+void Peptide::set_extended(Spectrum s, std::size_t M){
+    Spectrum conv(s.convolve());
+    std::vector<std::pair<std::size_t,std::size_t>> m_highest;
+    m_highest.reserve(conv.masses.size());
+    for (size_t i = 0; i < conv.masses.size(); i++) {
+        std::size_t mass = conv.masses[i];
+//        std::cout<<"mass: "<<mass<<std::endl;
+        if(mass >=57 && mass <=200){
+            m_highest.push_back(std::pair<std::size_t, std::size_t>(conv.mass_count[mass],mass));
+        }
+    }
+    std::sort(m_highest.begin(), m_highest.end(),std::greater<std::pair<std::size_t,std::size_t> >());
+    std::vector<std::size_t> new_aa_mass_list;
+    std::pair<std::size_t,std::size_t> & mth_mass= m_highest[M-1];
+//    std::cout<<"mth mult: "<<mth_mass.first <<"; mass: "<<mth_mass.second<<std::endl;
+//    std::cout<<"m_highest.size(): "<<m_highest.size()<<std::endl;
+    for(std::size_t i=M;i< m_highest.size();i++){
+        std::pair<std::size_t,std::size_t> & current= m_highest[i];
+//        std::cout<<"ith mult: "<<current.first <<"; ith mass: "<<current.second<<std::endl;
+        if(current.first < mth_mass.first){
+            m_highest.erase(m_highest.begin()+i,m_highest.end());
+            break;
+        }
+    }
+    new_aa_mass_list.reserve(m_highest.size());
+    for(std::size_t i=0;i<m_highest.size();i++){
+        std::pair<std::size_t,std::size_t> & current = m_highest[i];
+        new_aa_mass_list.push_back(current.second);
+    }
+    std::sort(new_aa_mass_list.begin(),new_aa_mass_list.end());
+    Peptide::aa_mass_list_extended.swap(new_aa_mass_list);
+}
 
 std::vector<Peptide::PeptideCode> Peptide::aa_list={
 		Peptide::PeptideCode::GLYCINE,  //G

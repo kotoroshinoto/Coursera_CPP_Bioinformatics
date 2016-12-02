@@ -6,9 +6,10 @@ int main() {
 		std::string aa_seq = input.next();
 		Peptide prot = Peptide(aa_seq);
 //		std::cerr << prot.to_string() <<std::endl<<std::flush;
-		std::vector<std::size_t> spectrum;
+		std::vector<std::size_t> spectrumv;
 		std::string whitespace("\\s");
-		input.next_into_int_type_vector<std::size_t>(spectrum, whitespace);
+		input.next_into_int_type_vector<std::size_t>(spectrumv, whitespace);
+		Spectrum spectrum(spectrumv);
 //		std::cerr << join(spectrum, " ") <<std::endl<<std::flush;
 		std::size_t score = prot.score_spectrum(spectrum, true);
 		std::cout << score <<std::endl<<std::flush;
